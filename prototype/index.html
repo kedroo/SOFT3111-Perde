@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Perde — Navigable Prototype</title>
+<style>
+  :root { --bg: #1e1e1e; --panel: #2c2c2c; --line: #3a3a3a; --ink: #f5f5f7; --ink-2: #b4b4b9; --ink-3: #86868b; --red: #e01e37; --blue: #0a84ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: -apple-system, "SF Pro Text", Inter, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+
+  /* Genel bakış */
+  #overview { max-width: 1280px; margin: 0 auto; padding: 48px 28px 80px; }
+  .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand svg { width: 40px; height: 40px; color: var(--red); }
+  .brand h1 { margin: 0; font-size: 30px; letter-spacing: -0.03em; }
+  .brand p { margin: 2px 0 0; color: var(--ink-3); font-size: 14px; }
+  .controls { display: flex; gap: 10px; align-items: center; }
+  .seg { display: flex; background: var(--panel); border-radius: 999px; padding: 3px; border: 1px solid var(--line); }
+  .seg button { border: 0; background: none; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #111; }
+  .start { border: 0; background: var(--ink); color: #111; border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .intro { margin: 26px 0 10px; color: var(--ink-2); font-size: 14.5px; line-height: 1.6; max-width: 820px; }
+  .flow { margin: 18px 0 0; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; font-size: 13px; color: var(--ink-2); line-height: 1.9; }
+  .flow b { color: var(--ink); }
+  section.group { margin-top: 40px; }
+  section.group h2 { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+  .card { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 0; overflow: hidden; cursor: pointer; transition: transform 0.2s, border-color 0.2s; }
+  .card:hover { transform: translateY(-2px); border-color: #555; }
+  .thumb { aspect-ratio: 16 / 10; background: #fff center top / cover no-repeat; border-bottom: 1px solid var(--line); }
+  .thumb.mobile { background-size: contain; background-color: #141414; }
+  .card .meta { padding: 10px 12px 12px; }
+  .card .num { font-size: 11px; color: var(--ink-3); font-weight: 600; letter-spacing: 0.06em; }
+  .card .t { font-size: 14px; font-weight: 600; margin-top: 2px; }
+
+  /* Gösterim */
+  #viewer { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--bg); }
+  #viewer.on { display: flex; }
+  .bar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--line); background: #252525; flex-shrink: 0; }
+  .bar .icon { width: 34px; height: 34px; border-radius: 8px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; color: var(--ink-2); }
+  .bar .icon:hover { background: #333; color: var(--ink); }
+  .bar .title { flex: 1; min-width: 0; text-align: center; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .title span { color: var(--ink-3); font-weight: 500; margin-right: 8px; }
+  .stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 18px; overflow: auto; }
+  .frame { position: relative; box-shadow: 0 30px 80px rgba(0,0,0,0.55); background: #fff; }
+  .frame.mobile { border-radius: 38px; padding: 12px; background: #0b0b0c; box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 2px #2a2a2c; }
+  .frame.mobile .screen { border-radius: 28px; overflow: hidden; }
+  .screen { position: relative; }
+  .screen img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+  .hot { position: absolute; border-radius: 8px; cursor: pointer; outline: 2px solid transparent; outline-offset: 1px; transition: outline-color 0.15s, background-color 0.15s; }
+  .hot:hover, .show-hot .hot { outline-color: var(--blue); background: rgba(10,132,255,0.14); }
+  .flash .hot { animation: flash 0.7s ease; }
+  @keyframes flash { 0%, 100% { outline-color: transparent; background: transparent; } 35% { outline-color: var(--blue); background: rgba(10,132,255,0.22); } }
+  .note { flex-shrink: 0; border-top: 1px solid var(--line); background: #252525; padding: 10px 16px; display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--ink-2); }
+  .note p { margin: 0; flex: 1; line-height: 1.5; }
+  .note .links { color: var(--ink-3); font-size: 12px; }
+  .kbd { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+  .kbd b { display: inline-block; min-width: 18px; text-align: center; border: 1px solid #444; border-radius: 4px; padding: 0 4px; margin: 0 2px; color: var(--ink-2); }
+  .lang { margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div id="overview">
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="4" width="34" height="5" rx="2.5" fill="currentColor"/><path d="M3 10.5h16c0 11.5-5.6 18.6-11.6 25.5H3z" fill="currentColor"/><path d="M37 10.5H21c0 11.5 5.6 18.6 11.6 25.5H37z" fill="currentColor"/></svg>
+      <div><h1>Perde — Navigable prototype</h1><p>Screen sketches · Event discovery &amp; ticketing platform · November 3, 2026</p></div>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Fidelity">
+        <button type="button" data-mode="wire" aria-pressed="true">Wireframe</button>
+        <button type="button" data-mode="final" aria-pressed="false">Final design</button>
+      </div>
+      <button type="button" class="start" id="start">Start prototype ▶</button>
+    </div>
+  </div>
+  <p class="intro">Each screen is shown both as a wireframe sketch and as the final design of the working prototype. Click a screen to open it, then use the highlighted areas to move through the app the way a user would. Clicking anywhere outside them flashes all clickable areas. Use the arrow keys to step through the screens in order, and press <b>W</b> to switch between wireframe and final design.</p>
+  <p class="lang">Note: the final design is localised in Turkish for its target market; the wireframes and all annotations are in English.</p>
+  <div class="flow"><b>Main user flow:</b> Welcome → Sign in → Survey → Explore → Event page → Choose tickets → Seat map (3D view) → Checkout → Tickets are ready → My tickets.<br /><b>Also:</b> Search, Category &amp; filters, Best sellers, Reviews, Suflör AI assistant, Mobile.</div>
+  <div id="groups"></div>
+</div>
+
+<div id="viewer" aria-live="polite">
+  <div class="bar">
+    <button class="icon" id="back" title="All screens (Esc)" aria-label="All screens"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+    <button class="icon" id="prev" title="Previous (←)" aria-label="Previous screen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m15 5-7 7 7 7"/></svg></button>
+    <div class="title" id="title"></div>
+    <div class="seg" role="group" aria-label="Fidelity">
+      <button type="button" data-mode="wire" aria-pressed="true">Wireframe</button>
+      <button type="button" data-mode="final" aria-pressed="false">Final design</button>
+    </div>
+    <button class="icon" id="hotToggle" title="Show clickable areas (H)" aria-label="Show clickable areas"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg></button>
+    <button class="icon" id="next" title="Next (→)" aria-label="Next screen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 5 7 7-7 7"/></svg></button>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="note"><p id="note"></p><span class="links" id="links"></span><span class="kbd"><b>←</b><b>→</b> screens <b>W</b> fidelity <b>H</b> hotspots <b>Esc</b> overview</span></div>
+</div>
+
+<script>
+const SCREENS = [{"id": "01-welcome", "title": "Welcome", "section": "Onboarding", "note": "Cinematic red-curtain intro. The curtain opens onto an empty stage and the Perde logo appears in the spotlight.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 36.81, "y": 83.56, "w": 26.39, "h": 6, "to": "02-sign-in", "label": "Sign in or create account"}, {"x": 36.81, "y": 90.89, "w": 26.39, "h": 6, "to": "04-explore", "label": "Continue without an account"}], "full": false}, {"id": "02-sign-in", "title": "Sign in / Create account", "section": "Onboarding", "note": "Identifier-first sign-in printed on a 3D paper membership ticket. When the account is created, the stub tears off.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 36.11, "y": 71.9, "w": 27.78, "h": 5.78, "to": "03-onboarding", "label": "Continue"}], "full": false}, {"id": "03-onboarding", "title": "Get to know you (survey)", "section": "Onboarding", "note": "7-step survey: city, categories, genres, artists, teams, timing, company and budget. The answers personalise Explore and the AI assistant.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 75.27, "y": 92.22, "w": 8.07, "h": 5.78, "to": "04-explore", "label": "Next step"}, {"x": 90.02, "y": 2, "w": 7.2, "h": 4, "to": "04-explore", "label": "Skip for now"}], "full": false}, {"id": "04-explore", "title": "Explore", "section": "Discover", "note": "Home screen: Apple TV-style featured carousel under the Dynamic-Island navigation, with Suflör leaning on the island.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 17.16, "y": 2.22, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.44, "w": 4.87, "h": 4, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.44, "w": 7.47, "h": 4, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.44, "w": 2.5, "h": 4, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 11.33, "y": 61.98, "w": 7.34, "h": 5.33, "to": "08-event", "label": "Get tickets"}], "full": true}, {"id": "05-best-sellers", "title": "Today's best sellers", "section": "Discover", "note": "Daily chart per city and category with trend arrows. Number one gets a large card.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 43.68, "y": 1.78, "w": 3.06, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 50.77, "y": 2, "w": 2.5, "h": 4, "to": "07-search", "label": "Search"}, {"x": 56.32, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 4, "y": 29.09, "w": 37.75, "h": 46.67, "to": "08-event", "label": "Get tickets"}], "full": false}, {"id": "06-category", "title": "Category: Theatre", "section": "Discover", "note": "Category page with city switch, filters and event cards showing ratings and prices.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 17.16, "y": 2.22, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.44, "w": 4.87, "h": 4, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.44, "w": 7.47, "h": 4, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.44, "w": 2.5, "h": 4, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 4, "y": 40.89, "w": 7.11, "h": 4.44, "to": "06b-filters", "label": "Filters"}, {"x": 4, "y": 48.89, "w": 21.96, "h": 33.89, "to": "08-event", "label": "Event card"}], "full": false}, {"id": "06b-filters", "title": "Filters", "section": "Discover", "note": "Filter sheet: price histogram, district, venue, seating type, genre, date window and hide sold out.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 75.94, "y": 91.56, "w": 21.56, "h": 5.33, "to": "06-category", "label": "Show results"}], "full": false}, {"id": "07-search", "title": "Search", "section": "Discover", "note": "The island morphs into a search panel (⌘K) with category shortcuts.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 29.17, "y": 12.78, "w": 5.06, "h": 4.11, "to": "07b-search-results", "label": "Concerts"}], "full": false}, {"id": "07b-search-results", "title": "Search results", "section": "Discover", "note": "Results for “rock” with the same filters as category pages.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 17.16, "y": 2.22, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.44, "w": 4.87, "h": 4, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.44, "w": 7.47, "h": 4, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.44, "w": 2.5, "h": 4, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 4, "y": 46.72, "w": 21.96, "h": 33.89, "to": "08-event", "label": "Event card"}], "full": false}, {"id": "08-event", "title": "Event page", "section": "Event", "note": "Full-bleed cover with category, date, venue, duration and rating chips; share, add to calendar and favourite actions.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 17.16, "y": 2.22, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.44, "w": 4.87, "h": 4, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.44, "w": 7.47, "h": 4, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.44, "w": 2.5, "h": 4, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 35.54, "y": 62.89, "w": 18.22, "h": 4, "to": "09b-event-reviews", "label": "Ratings"}], "full": true}, {"id": "09-event-tickets", "title": "Choose session & tickets", "section": "Event", "note": "Apple Store-style picker: session, ticket tier and quantity, with a sticky buy bar.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 17.16, "y": 2.22, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.44, "w": 4.87, "h": 4, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.44, "w": 7.47, "h": 4, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.44, "w": 2.5, "h": 4, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 78.53, "y": 49.97, "w": 9.92, "h": 5.78, "to": "10-seat-map", "label": "Choose seats"}], "full": false}, {"id": "09b-event-reviews", "title": "Ratings & reviews", "section": "Event", "note": "App Store-style rating summary, top tags and review cards. Ticket holders get a “Has ticket” badge.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 43.72, "y": 1.78, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 50.73, "y": 2, "w": 2.5, "h": 4, "to": "07-search", "label": "Search"}, {"x": 56.28, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 85.43, "y": 14.31, "w": 10.57, "h": 4.89, "to": "09c-write-review", "label": "Write a review"}, {"x": 75.38, "y": 92.22, "w": 7.95, "h": 4.89, "to": "10-seat-map", "label": "Choose seats"}], "full": false}, {"id": "09c-write-review", "title": "Write a review", "section": "Event", "note": "Tap the stars, pick tags and optionally write a comment. One review per member per event.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 56.11, "y": 75.35, "w": 9.72, "h": 5.33, "to": "09b-event-reviews", "label": "Send"}, {"x": 63.33, "y": 19.32, "w": 2.5, "h": 4, "to": "09b-event-reviews", "label": "Close"}], "full": false}, {"id": "10-seat-map", "title": "Seat selection", "section": "Ticketing", "note": "Generated seat map with zoom, best adjacent seats and a 3D view from the selected seat. Tickets are shown as paper stubs.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 17.16, "y": 2.22, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.44, "w": 4.87, "h": 4, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.44, "w": 7.47, "h": 4, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.44, "w": 2.5, "h": 4, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 91.56, "y": 24.03, "w": 2.5, "h": 4, "to": "11-seat-3d", "label": "Full-screen 3D view"}, {"x": 66.56, "y": 87.28, "w": 28.33, "h": 6.22, "to": "12-checkout", "label": "Continue"}], "full": false}, {"id": "11-seat-3d", "title": "View from your seat (3D)", "section": "Ticketing", "note": "Real-scale 3D hall with velvet seats, audience and stage lighting. Drag to look around.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 94.44, "y": 4.89, "w": 2.5, "h": 4, "to": "10-seat-map", "label": "Close"}], "full": false}, {"id": "12-checkout", "title": "Checkout", "section": "Ticketing", "note": "Seats are held for 10 minutes (countdown in the island). Demo card form with live card preview, brand detection, Luhn check and installments.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 35, "y": 91.57, "w": 26.56, "h": 6.22, "to": "13-confirmation", "label": "Pay"}], "full": false}, {"id": "13-confirmation", "title": "Tickets are ready", "section": "Ticketing", "note": "Payment confirmed. The paper e-ticket with a real QR code is cut and appears in 3D.", "device": "desktop", "w": 1440, "h": 1080, "hotspots": [{"x": 17.16, "y": 1.85, "w": 6.73, "h": 3.7, "to": "04-explore", "label": "Explore"}, {"x": 34.18, "y": 2.04, "w": 4.87, "h": 3.33, "to": "06-category", "label": "Theatre"}, {"x": 61.27, "y": 2.04, "w": 7.47, "h": 3.33, "to": "07-search", "label": "Search"}, {"x": 77.28, "y": 2.04, "w": 2.5, "h": 3.33, "to": "14-my-tickets", "label": "My tickets"}, {"x": 82.98, "y": 0.17, "w": 2.85, "h": 7.78, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 37.31, "y": 84.98, "w": 10.43, "h": 4.44, "to": "14-my-tickets", "label": "Go to my tickets"}], "full": false}, {"id": "14-my-tickets", "title": "My tickets", "section": "Account", "note": "Every order as a 3D paper ticket: offset-printed artwork, seat, QR code. Tap to flip; arrows switch between tickets.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 43.72, "y": 1.78, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 50.73, "y": 2, "w": 2.5, "h": 4, "to": "07-search", "label": "Search"}, {"x": 56.28, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 6.78, "y": 13.14, "w": 61.72, "h": 40.66, "to": "14b-ticket-back", "label": "Flip ticket"}, {"x": 80.7, "y": 49.11, "w": 9, "h": 4.44, "to": "08-event", "label": "Event page"}], "full": false}, {"id": "14b-ticket-back", "title": "Ticket – back side", "section": "Account", "note": "The back shows the ticket holder, order number, payment and conditions.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 43.72, "y": 1.78, "w": 6.73, "h": 4.44, "to": "04-explore", "label": "Explore"}, {"x": 50.73, "y": 2, "w": 2.5, "h": 4, "to": "07-search", "label": "Search"}, {"x": 56.28, "y": 0.2, "w": 2.85, "h": 9.33, "to": "15-assistant", "label": "Ask Suflör"}, {"x": 6.78, "y": 13.14, "w": 61.72, "h": 40.66, "to": "14-my-tickets", "label": "Flip back"}], "full": false}, {"id": "15-assistant", "title": "Suflör – AI assistant", "section": "AI", "note": "Tapping Suflör turns the island into a chat panel with a warm, rotating stage-light glow and quick suggestions.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 42.58, "y": 33.06, "w": 14.84, "h": 4, "to": "16-assistant-chat", "label": "Suggestion"}, {"x": 70.56, "y": 2.44, "w": 2.5, "h": 4, "to": "04-explore", "label": "Close"}], "full": false}, {"id": "16-assistant-chat", "title": "Suflör – recommendation", "section": "AI", "note": "Suflör answers from the live catalogue, explains why each event fits and shows event cards. It can open the seat map with the best seats pre-selected.", "device": "desktop", "w": 1440, "h": 900, "hotspots": [{"x": 30.28, "y": 24.64, "w": 14.58, "h": 26.56, "to": "08-event", "label": "Event card"}, {"x": 70.56, "y": 2.44, "w": 2.5, "h": 4, "to": "04-explore", "label": "Close"}], "full": false}, {"id": "17-mobile-explore", "title": "Mobile – Explore", "section": "Mobile", "note": "Compact island on phones; the featured card fills the width.", "device": "mobile", "w": 390, "h": 844, "hotspots": [{"x": 63.45, "y": 2.13, "w": 9.23, "h": 4.27, "to": "18-mobile-menu", "label": "Menu"}, {"x": 12.16, "y": 49.29, "w": 27.1, "h": 5.69, "to": "19-mobile-event", "label": "Get tickets"}], "full": false}, {"id": "18-mobile-menu", "title": "Mobile – Menu", "section": "Mobile", "note": "The island expands into a full menu with categories, tickets, favourites and city.", "device": "mobile", "w": 390, "h": 844, "hotspots": [{"x": 84.62, "y": 3.08, "w": 9.23, "h": 4.27, "to": "17-mobile-explore", "label": "Close"}], "full": false}, {"id": "19-mobile-event", "title": "Mobile – Event page", "section": "Mobile", "note": "Event page on a phone with the sticky buy bar.", "device": "mobile", "w": 390, "h": 844, "hotspots": [{"x": 27.31, "y": 1.9, "w": 24.86, "h": 4.74, "to": "17-mobile-explore", "label": "Back to Explore"}], "full": false}];
+const SECTIONS = ["Onboarding", "Discover", "Event", "Ticketing", "Account", "AI", "Mobile"];
+let mode = "wire";
+let current = 0;
+const byId = Object.fromEntries(SCREENS.map((s, i) => [s.id, i]));
+const src = (s) => (mode === "wire" ? `screens/wireframes/${s.id}.svg` : `screens/final-ui/${s.id}.jpg`);
+
+function renderOverview() {
+  const groups = document.getElementById("groups");
+  groups.innerHTML = "";
+  for (const sec of SECTIONS) {
+    const list = SCREENS.filter((s) => s.section === sec);
+    if (!list.length) continue;
+    const el = document.createElement("section");
+    el.className = "group";
+    el.innerHTML = `<h2>${sec}</h2><div class="grid"></div>`;
+    for (const s of list) {
+      const b = document.createElement("button");
+      b.className = "card";
+      b.innerHTML = `<div class="thumb ${s.device === "mobile" ? "mobile" : ""}" style="background-image:url('${src(s)}')"></div><div class="meta"><div class="num">${String(byId[s.id] + 1).padStart(2, "0")} · ${s.device === "mobile" ? "PHONE" : "DESKTOP"}</div><div class="t">${s.title}</div></div>`;
+      b.onclick = () => open(byId[s.id]);
+      el.querySelector(".grid").appendChild(b);
+    }
+    groups.appendChild(el);
+  }
+}
+
+function fit(s) {
+  const stage = document.getElementById("stage");
+  const pad = s.device === "mobile" ? 24 : 0;
+  const maxW = stage.clientWidth - 36 - pad;
+  const maxH = stage.clientHeight - 36 - pad;
+  const scale = Math.min(maxW / s.w, maxH / s.h, s.device === "mobile" ? 1.1 : 1.2);
+  return { w: Math.round(s.w * scale), h: Math.round(s.h * scale) };
+}
+
+function show() {
+  const s = SCREENS[current];
+  const stage = document.getElementById("stage");
+  const { w, h } = fit(s);
+  stage.innerHTML = `<div class="frame ${s.device}"><div class="screen" style="width:${w}px;height:${h}px"><img alt="${s.title}" src="${src(s)}" />${s.hotspots
+    .map((p) => `<a class="hot" href="#${p.to}" title="${p.label} → ${SCREENS[byId[p.to]]?.title ?? ""}" style="left:${p.x}%;top:${p.y}%;width:${p.w}%;height:${p.h}%"></a>`)
+    .join("")}</div></div>`;
+  stage.querySelectorAll(".hot").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); open(byId[a.getAttribute("href").slice(1)]); }));
+  stage.querySelector(".screen").addEventListener("click", () => { stage.classList.remove("flash"); void stage.offsetWidth; stage.classList.add("flash"); });
+  document.getElementById("title").innerHTML = `<span>${String(current + 1).padStart(2, "0")} / ${SCREENS.length}</span>${s.title}`;
+  document.getElementById("note").textContent = s.note;
+  const targets = [...new Set(s.hotspots.map((p) => SCREENS[byId[p.to]]?.title).filter(Boolean))];
+  document.getElementById("links").textContent = targets.length ? `Leads to: ${targets.join(", ")}` : "";
+  history.replaceState(null, "", `#${s.id}`);
+}
+
+function open(i) {
+  if (i === undefined || i < 0) return;
+  current = i;
+  document.getElementById("overview").style.display = "none";
+  document.getElementById("viewer").classList.add("on");
+  show();
+}
+function close() {
+  document.getElementById("viewer").classList.remove("on");
+  document.getElementById("overview").style.display = "";
+  history.replaceState(null, "", location.pathname);
+}
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+  renderOverview();
+  if (document.getElementById("viewer").classList.contains("on")) show();
+}
+
+document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+document.getElementById("start").onclick = () => open(0);
+document.getElementById("back").onclick = close;
+document.getElementById("prev").onclick = () => open((current - 1 + SCREENS.length) % SCREENS.length);
+document.getElementById("next").onclick = () => open((current + 1) % SCREENS.length);
+document.getElementById("hotToggle").onclick = () => document.getElementById("stage").classList.toggle("show-hot");
+addEventListener("resize", () => document.getElementById("viewer").classList.contains("on") && show());
+addEventListener("keydown", (e) => {
+  const on = document.getElementById("viewer").classList.contains("on");
+  if (e.key === "w" || e.key === "W") setMode(mode === "wire" ? "final" : "wire");
+  else if (!on) return;
+  else if (e.key === "ArrowRight") open((current + 1) % SCREENS.length);
+  else if (e.key === "ArrowLeft") open((current - 1 + SCREENS.length) % SCREENS.length);
+  else if (e.key === "Escape") close();
+  else if (e.key === "h" || e.key === "H") document.getElementById("stage").classList.toggle("show-hot");
+});
+renderOverview();
+if (location.hash && byId[location.hash.slice(1)] !== undefined) open(byId[location.hash.slice(1)]);
+</script>
+</body>
+</html>
